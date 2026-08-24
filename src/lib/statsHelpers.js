@@ -1,6 +1,6 @@
 import { currentStreak, dateKey } from './dateHelpers'
 
-export function longestStreak(entrySet) {
+export function longestStreak(entrySet, frozenSet) {
   if (!entrySet || entrySet.size === 0) return 0
   const dates = Array.from(entrySet).sort()
   let longest = 1
@@ -12,7 +12,17 @@ export function longestStreak(entrySet) {
     if (diffDays === 1) {
       current++
     } else if (diffDays > 1) {
-      current = 1
+      // check whether every day in the gap was frozen; if so, the streak survives
+      let allFrozen = true
+      const check = new Date(prev)
+      for (let g = 1; g < diffDays; g++) {
+        check.setDate(check.getDate() + 1)
+        if (!frozenSet?.has(dateKey(check))) {
+          allFrozen = false
+          break
+        }
+      }
+      current = allFrozen ? current + 1 : 1
     }
     if (current > longest) longest = current
   }
@@ -83,17 +93,72 @@ export function overallCompletion(habits, entriesByHabit, windowDays = 30) {
   return Math.round(rates.reduce((a, b) => a + b, 0) / rates.length)
 }
 
-export function bestStreakHabit(habits, entriesByHabit) {
+export function bestStreakHabit(habits, entriesByHabit, frozenByHabit) {
   let best = null
   let bestValue = -1
   habits.forEach((h) => {
-    const s = currentStreak(entriesByHabit[h.id])
+    const s = currentStreak(entriesByHabit[h.id], frozenByHabit?.[h.id])
     if (s > bestValue) {
       bestValue = s
       best = h
     }
   })
   return best && bestValue > 0 ? { habit: best, streak: bestValue } : null
+}
+
+// Finds the strongest "on days you do A, you also tend to do B" relationship
+// across all habit pairs, using only client-side data already loaded.
+// Returns null if there isn't enough overlapping data to say anything meaningful.
+export function habitCorrelation(habits, entriesByHabit, days = 90) {
+  if (habits.length < 2) return null
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const dateKeys = []
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today)
+    d.setDate(d.getDate() - i)
+    dateKeys.push(dateKey(d))
+  }
+
+  let best = null
+
+  for (let i = 0; i < habits.length; i++) {
+    for (let j = 0; j < habits.length; j++) {
+      if (i === j) continue
+      const a = habits[i]
+      const b = habits[j]
+      const aSet = entriesByHabit[a.id] || new Set()
+      const bSet = entriesByHabit[b.id] || new Set()
+
+      let aDoneCount = 0
+      let bDoneCount = 0
+      let bothDoneCount = 0
+
+      dateKeys.forEach((key) => {
+        const aDone = aSet.has(key)
+        const bDone = bSet.has(key)
+        if (aDone) aDoneCount++
+        if (bDone) bDoneCount++
+        if (aDone && bDone) bothDoneCount++
+      })
+
+      // require enough real data on both sides before drawing any conclusion
+      if (aDoneCount < 8 || bDoneCount < 8) continue
+
+      const coRate = bothDoneCount / aDoneCount // P(B done | A done)
+      const baseRate = bDoneCount / days // B's overall rate
+      const lift = coRate - baseRate
+
+      if (lift > 0.25 && coRate > 0.6) {
+        if (!best || lift > best.lift) {
+          best = { a, b, coRate, lift }
+        }
+      }
+    }
+  }
+
+  return best
 }
 
 // Map of dateKey -> { done, total, pct } for each of the last `days` days,

@@ -1,8 +1,22 @@
 import { useState } from 'react'
 import { currentStreak, dateKey } from '../lib/dateHelpers'
 import Flame from './Flame'
+import EmptyState from './EmptyState'
+import TodoList from './TodoList'
 
-export default function TodayView({ habits, entriesByHabit, notesByEntry, onToggle, onSetNote }) {
+export default function TodayView({
+  habits,
+  entriesByHabit,
+  notesByEntry,
+  frozenByHabit,
+  onToggle,
+  onSetNote,
+  onToggleFreeze,
+  tasks,
+  onAddTask,
+  onToggleTask,
+  onDeleteTask,
+}) {
   const [openNoteId, setOpenNoteId] = useState(null)
   const [draftNote, setDraftNote] = useState('')
 
@@ -18,10 +32,8 @@ export default function TodayView({ habits, entriesByHabit, notesByEntry, onTogg
     return (
       <div className="view-panel">
         <p className="today-date">{dateLabel}</p>
-        <div className="empty">
-          <span className="glyph">nothing tracked yet</span>
-          <span className="sub">add your first habit above</span>
-        </div>
+        <TodoList tasks={tasks} onAdd={onAddTask} onToggle={onToggleTask} onDelete={onDeleteTask} />
+        <EmptyState headline="nothing tracked yet" sub="add your first habit above" />
       </div>
     )
   }
@@ -43,7 +55,7 @@ export default function TodayView({ habits, entriesByHabit, notesByEntry, onTogg
         {habits.map((habit) => {
           const entrySet = entriesByHabit[habit.id]
           const done = entrySet?.has(key)
-          const streak = currentStreak(entrySet)
+          const streak = currentStreak(entrySet, frozenByHabit?.[habit.id])
           const noteKey = `${habit.id}:${key}`
           const existingNote = notesByEntry?.[noteKey]
           const noteOpen = openNoteId === habit.id
@@ -119,6 +131,8 @@ export default function TodayView({ habits, entriesByHabit, notesByEntry, onTogg
           )
         })}
       </div>
+
+      <TodoList tasks={tasks} onAdd={onAddTask} onToggle={onToggleTask} onDelete={onDeleteTask} />
     </div>
   )
 }

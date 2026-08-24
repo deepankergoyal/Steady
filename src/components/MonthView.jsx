@@ -1,13 +1,16 @@
 import { monthLabel } from '../lib/dateHelpers'
 import HabitRow from './HabitRow'
 import ArchivedHabits from './ArchivedHabits'
+import EmptyState from './EmptyState'
 
 export default function MonthView({
   habits,
   archivedHabits,
   entriesByHabit,
   notesByEntry,
+  frozenByHabit,
   onSetNote,
+  onToggleFreeze,
   viewDate,
   setViewDate,
   onToggle,
@@ -44,10 +47,7 @@ export default function MonthView({
       </div>
 
       {habits.length === 0 ? (
-        <div className="empty">
-          <span className="glyph">nothing tracked yet</span>
-          <span className="sub">add your first habit above</span>
-        </div>
+        <EmptyState headline="nothing tracked yet" sub="add your first habit above" />
       ) : (
         <div>
           {habits.map((habit, i) => (
@@ -57,6 +57,8 @@ export default function MonthView({
               entrySet={entriesByHabit[habit.id]}
               notesByEntry={notesByEntry}
               onSetNote={onSetNote}
+              frozenSet={frozenByHabit?.[habit.id]}
+              onToggleFreeze={onToggleFreeze}
               viewDate={viewDate}
               onToggle={onToggle}
               onArchive={onArchive}

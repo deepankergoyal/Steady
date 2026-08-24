@@ -6,6 +6,7 @@ export function useHabits(session) {
   const [archivedHabits, setArchivedHabits] = useState([])
   const [entriesByHabit, setEntriesByHabit] = useState({})
   const [notesByEntry, setNotesByEntry] = useState({})
+  const [frozenByHabit, setFrozenByHabit] = useState({})
   const [loading, setLoading] = useState(true)
 
   const loadAll = useCallback(async () => {
@@ -48,10 +49,25 @@ export function useHabits(session) {
       if (row.note) notes[`${row.habit_id}:${row.entry_date}`] = row.note
     })
 
+    const { data: freezeRows, error: freezeErr } = await supabase
+      .from('streak_freezes')
+      .select('habit_id, freeze_date')
+      .eq('user_id', userId)
+
+    if (freezeErr) console.error(freezeErr)
+
+    const frozen = {}
+    ;(allHabitRows || []).forEach((h) => (frozen[h.id] = new Set()))
+    ;(freezeRows || []).forEach((row) => {
+      if (!frozen[row.habit_id]) frozen[row.habit_id] = new Set()
+      frozen[row.habit_id].add(row.freeze_date)
+    })
+
     setHabits(activeRows)
     setArchivedHabits(archivedRows)
     setEntriesByHabit(grouped)
     setNotesByEntry(notes)
+    setFrozenByHabit(frozen)
     setLoading(false)
   }, [session])
 
@@ -79,6 +95,7 @@ export function useHabits(session) {
 
       setHabits((prev) => [...prev, data])
       setEntriesByHabit((prev) => ({ ...prev, [data.id]: new Set() }))
+      setFrozenByHabit((prev) => ({ ...prev, [data.id]: new Set() }))
     },
     [session, habits.length]
   )
@@ -155,6 +172,11 @@ export function useHabits(session) {
       delete next[id]
       return next
     })
+    setFrozenByHabit((prev) => {
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
   }, [])
 
   const toggleDay = useCallback(
@@ -222,16 +244,56 @@ export function useHabits(session) {
     [loadAll]
   )
 
+  const toggleFreeze = useCallback(
+    async (habitId, key) => {
+      if (!session) return
+      const userId = session.user.id
+      const currentlyFrozen = frozenByHabit[habitId]?.has(key)
+
+      setFrozenByHabit((prev) => {
+        const next = { ...prev }
+        const set = new Set(next[habitId] || [])
+        if (currentlyFrozen) set.delete(key)
+        else set.add(key)
+        next[habitId] = set
+        return next
+      })
+
+      if (currentlyFrozen) {
+        const { error } = await supabase
+          .from('streak_freezes')
+          .delete()
+          .eq('habit_id', habitId)
+          .eq('freeze_date', key)
+        if (error) {
+          console.error(error)
+          loadAll()
+        }
+      } else {
+        const { error } = await supabase
+          .from('streak_freezes')
+          .insert({ habit_id: habitId, user_id: userId, freeze_date: key })
+        if (error) {
+          console.error(error)
+          loadAll()
+        }
+      }
+    },
+    [session, frozenByHabit, loadAll]
+  )
+
   return {
     habits,
     archivedHabits,
     entriesByHabit,
     notesByEntry,
+    frozenByHabit,
     loading,
     addHabit,
     deleteHabit,
     toggleDay,
     setEntryNote,
+    toggleFreeze,
     renameHabit,
     archiveHabit,
     restoreHabit,

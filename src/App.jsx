@@ -3,6 +3,7 @@ import { useAuth } from './lib/useAuth'
 import { useHabits } from './lib/useHabits'
 import { useTheme } from './lib/useTheme'
 import { useReminders } from './lib/useReminders'
+import { useTasks } from './lib/useTasks'
 import { supabase } from './lib/supabaseClient'
 import AuthScreen from './components/AuthScreen'
 import TodayView from './components/TodayView'
@@ -33,10 +34,13 @@ export default function App() {
     archivedHabits,
     entriesByHabit,
     notesByEntry,
+    frozenByHabit,
+    loading: habitsLoading,
     addHabit,
     deleteHabit,
     toggleDay,
     setEntryNote,
+    toggleFreeze,
     renameHabit,
     archiveHabit,
     restoreHabit,
@@ -59,6 +63,7 @@ export default function App() {
   }, [habits, filterText])
 
   const todayKey = new Date().toISOString().slice(0, 10)
+  const { tasks, addTask, toggleTask, deleteTask } = useTasks(session, todayKey)
   const doneToday = filteredHabits.filter((h) => entriesByHabit[h.id]?.has(todayKey)).length
   const totalToday = filteredHabits.length
 
@@ -199,54 +204,75 @@ export default function App() {
             {view === 'today' && <p className="topbar-progress">{progressLine}</p>}
           </div>
 
-          <form className="add-row" onSubmit={handleAddHabit}>
-            <input
-              type="text"
-              placeholder="e.g. Read before bed"
-              maxLength={60}
-              value={newHabitName}
-              onChange={(e) => setNewHabitName(e.target.value)}
-            />
-            <button type="submit">Add habit</button>
-          </form>
+          {habitsLoading ? (
+            <div className="content-loading">
+              <div className="skeleton-line" style={{ width: '70%' }} />
+              <div className="skeleton-line" style={{ width: '45%' }} />
+              <div className="skeleton-line" style={{ width: '60%' }} />
+            </div>
+          ) : (
+            <>
+              <form className="add-row" onSubmit={handleAddHabit}>
+                <input
+                  type="text"
+                  placeholder="e.g. Read before bed"
+                  maxLength={60}
+                  value={newHabitName}
+                  onChange={(e) => setNewHabitName(e.target.value)}
+                />
+                <button type="submit">Add habit</button>
+              </form>
 
-          <SuggestedHabits existingNames={habits.map((h) => h.name)} onAdd={addHabit} />
+              <SuggestedHabits existingNames={habits.map((h) => h.name)} onAdd={addHabit} />
 
-          <FilterBar
-            value={filterText}
-            onChange={setFilterText}
-            resultCount={filteredHabits.length}
-            totalCount={habits.length}
-          />
+              <FilterBar
+                value={filterText}
+                onChange={setFilterText}
+                resultCount={filteredHabits.length}
+                totalCount={habits.length}
+              />
 
-          {view === 'today' && (
-            <TodayView
-              habits={filteredHabits}
-              entriesByHabit={entriesByHabit}
-              notesByEntry={notesByEntry}
-              onToggle={toggleDay}
-              onSetNote={setEntryNote}
-            />
-          )}
-          {view === 'month' && (
-            <MonthView
-              habits={filteredHabits}
-              archivedHabits={archivedHabits}
-              entriesByHabit={entriesByHabit}
-              notesByEntry={notesByEntry}
-              onSetNote={setEntryNote}
-              viewDate={viewDate}
-              setViewDate={setViewDate}
-              onToggle={toggleDay}
-              onArchive={archiveHabit}
-              onRename={renameHabit}
-              onReorder={reorderHabit}
-              onRestore={restoreHabit}
-              onDelete={deleteHabit}
-            />
-          )}
-          {view === 'dashboard' && (
-            <Dashboard habits={filteredHabits} entriesByHabit={entriesByHabit} />
+              {view === 'today' && (
+                <TodayView
+                  habits={filteredHabits}
+                  entriesByHabit={entriesByHabit}
+                  notesByEntry={notesByEntry}
+                  frozenByHabit={frozenByHabit}
+                  onToggle={toggleDay}
+                  onSetNote={setEntryNote}
+                  tasks={tasks}
+                  onAddTask={addTask}
+                  onToggleTask={toggleTask}
+                  onDeleteTask={deleteTask}
+                />
+              )}
+              {view === 'month' && (
+                <MonthView
+                  habits={filteredHabits}
+                  archivedHabits={archivedHabits}
+                  entriesByHabit={entriesByHabit}
+                  notesByEntry={notesByEntry}
+                  frozenByHabit={frozenByHabit}
+                  onSetNote={setEntryNote}
+                  onToggleFreeze={toggleFreeze}
+                  viewDate={viewDate}
+                  setViewDate={setViewDate}
+                  onToggle={toggleDay}
+                  onArchive={archiveHabit}
+                  onRename={renameHabit}
+                  onReorder={reorderHabit}
+                  onRestore={restoreHabit}
+                  onDelete={deleteHabit}
+                />
+              )}
+              {view === 'dashboard' && (
+                <Dashboard
+                  habits={filteredHabits}
+                  entriesByHabit={entriesByHabit}
+                  frozenByHabit={frozenByHabit}
+                />
+              )}
+            </>
           )}
 
           <footer>synced quietly, just for you</footer>

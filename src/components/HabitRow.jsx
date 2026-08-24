@@ -2,11 +2,27 @@ import { useLayoutEffect, useRef, useState } from 'react'
 import { currentStreak, dateKey, daysInMonth, isSameDay } from '../lib/dateHelpers'
 import Flame from './Flame'
 
+// Duolingo-style limit: at most one freeze per rolling 7-day window per habit,
+// so it stays a real "grace day" rather than an unlimited way to fake a streak.
+function isFreezeAvailable(frozenSet, key) {
+  if (!frozenSet) return true
+  const target = new Date(key + 'T00:00:00')
+  for (const fkey of frozenSet) {
+    if (fkey === key) continue
+    const d = new Date(fkey + 'T00:00:00')
+    const diff = Math.abs((target - d) / 86400000)
+    if (diff < 7) return false
+  }
+  return true
+}
+
 export default function HabitRow({
   habit,
   entrySet,
   notesByEntry,
   onSetNote,
+  frozenSet,
+  onToggleFreeze,
   viewDate,
   onToggle,
   onArchive,
@@ -25,7 +41,7 @@ export default function HabitRow({
   const numDays = daysInMonth(viewDate)
   const year = viewDate.getFullYear()
   const month = viewDate.getMonth()
-  const streak = currentStreak(entrySet)
+  const streak = currentStreak(entrySet, frozenSet)
 
   const days = []
   for (let day = 1; day <= numDays; day++) {
@@ -34,7 +50,8 @@ export default function HabitRow({
     const done = entrySet?.has(key)
     const future = d > today
     const note = notesByEntry?.[`${habit.id}:${key}`]
-    days.push({ day, key, done, future, isToday: isSameDay(d, today), note })
+    const frozen = frozenSet?.has(key)
+    days.push({ day, key, done, future, isToday: isSameDay(d, today), note, frozen })
   }
 
   // draw thread lines under consecutive done runs
@@ -137,31 +154,57 @@ export default function HabitRow({
         </div>
       </div>
       <div className="days" ref={daysWrapRef}>
-        {days.map(({ day, key, done, future, isToday, note }) => (
-          <div
-            key={key}
-            className={
-              'day-cell' + (done ? ' done' : '') + (future ? ' future' : '') + (isToday ? ' today' : '')
-            }
-            title={
-              new Date(year, month, day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) +
-              (done ? ' — done' : '') +
-              (note ? ` · "${note}"` : '')
-            }
-            onClick={future ? undefined : () => onToggle(habit.id, key)}
-          >
-            {done && (
-              <span
-                className={'note-dot' + (note ? ' filled' : '')}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setOpenNoteKey(key)
-                  setDraftNote(note || '')
-                }}
-              />
-            )}
-          </div>
-        ))}
+        {days.map(({ day, key, done, future, isToday, note, frozen }) => {
+          const canFreeze = !done && !future && isFreezeAvailable(frozenSet, key)
+          return (
+            <div
+              key={key}
+              className={
+                'day-cell' +
+                (done ? ' done' : '') +
+                (future ? ' future' : '') +
+                (isToday ? ' today' : '') +
+                (frozen ? ' frozen' : '')
+              }
+              title={
+                new Date(year, month, day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) +
+                (done ? ' — done' : '') +
+                (frozen ? ' — streak freeze used' : '') +
+                (note ? ` · "${note}"` : '')
+              }
+              onClick={future ? undefined : () => onToggle(habit.id, key)}
+            >
+              {done && (
+                <span
+                  className={'note-dot' + (note ? ' filled' : '')}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setOpenNoteKey(key)
+                    setDraftNote(note || '')
+                  }}
+                />
+              )}
+              {!done && !future && (frozen || canFreeze) && (
+                <span
+                  className={'freeze-dot' + (frozen ? ' active' : '')}
+                  title={
+                    frozen
+                      ? 'Remove streak freeze'
+                      : canFreeze
+                      ? 'Freeze this day — excuses it without breaking your streak (1 per week)'
+                      : 'No freeze available this week'
+                  }
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (frozen || canFreeze) onToggleFreeze(habit.id, key)
+                  }}
+                >
+                  ❄
+                </span>
+              )}
+            </div>
+          )
+        })}
       </div>
 
       {openNoteKey && (

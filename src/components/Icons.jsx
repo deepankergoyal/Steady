@@ -71,3 +71,29 @@ export function IconBell(props) {
     </svg>
   )
 }
+
+export function IconLayers(props) {
+  return (
+    <svg {...base(props)}>
+      <path d="M12 3l9 5-9 5-9-5 9-5z" />
+      <path d="M3 13l9 5 9-5" />
+    </svg>
+  )
+}
+
+export function IconTrendUp(props) {
+  return (
+    <svg {...base(props)}>
+      <path d="M3 17l6-6 4 4 8-8" />
+      <path d="M15 7h6v6" />
+    </svg>
+  )
+}
+
+export function IconStar(props) {
+  return (
+    <svg {...base(props)} fill="currentColor" stroke="none">
+      <path d="M12 2.5l2.9 6.3 6.9.7-5.2 4.7 1.5 6.8-6.1-3.6-6.1 3.6 1.5-6.8-5.2-4.7 6.9-.7z" />
+    </svg>
+  )
+}

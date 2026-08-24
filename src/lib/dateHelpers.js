@@ -22,15 +22,24 @@ export function monthLabel(d) {
   return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase()
 }
 
-export function currentStreak(entrySet) {
+export function currentStreak(entrySet, frozenSet) {
   if (!entrySet) return 0
   let streak = 0
   let d = new Date()
-  if (!entrySet.has(dateKey(d))) {
+  const todayKey = dateKey(d)
+  if (!entrySet.has(todayKey) && !frozenSet?.has(todayKey)) {
     d.setDate(d.getDate() - 1)
   }
-  while (entrySet.has(dateKey(d))) {
-    streak++
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const key = dateKey(d)
+    if (entrySet.has(key)) {
+      streak++
+    } else if (frozenSet?.has(key)) {
+      // frozen day: chain continues, but doesn't add to the count
+    } else {
+      break
+    }
     d.setDate(d.getDate() - 1)
   }
   return streak

@@ -11,31 +11,44 @@ import {
   perfectDaysCount,
   weekTrend,
   weekdayInsight,
+  habitCorrelation,
 } from '../lib/statsHelpers'
 import ContributionGraph from './ContributionGraph'
 import Flame from './Flame'
+import EmptyState from './EmptyState'
+import { IconLayers, IconTrendUp, IconStar } from './Icons'
 
 const WEEKDAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+const RHYTHM_COLORS = [
+  'var(--thread)',
+  'var(--ember)',
+  'var(--accent-blue)',
+  'var(--accent-plum)',
+  'var(--thread-dim)',
+  'var(--ember)',
+  'var(--accent-blue)',
+]
 
-export default function Dashboard({ habits, entriesByHabit }) {
+export default function Dashboard({ habits, entriesByHabit, frozenByHabit }) {
   const stats = useMemo(() => {
     const overall = overallCompletion(habits, entriesByHabit, 30)
-    const best = bestStreakHabit(habits, entriesByHabit)
+    const best = bestStreakHabit(habits, entriesByHabit, frozenByHabit)
     const pattern = weekdayPattern(habits, entriesByHabit, 56)
     const dailyMap = dailyCompletionMap(habits, entriesByHabit, 371)
     const perfectDays = perfectDaysCount(dailyMap)
     const trend = weekTrend(dailyMap)
     const insight = weekdayInsight(pattern)
-    return { overall, best, pattern, perfectDays, trend, insight }
-  }, [habits, entriesByHabit])
+    const correlation = habitCorrelation(habits, entriesByHabit)
+    const allStreaks = habits
+      .map((h) => ({ habit: h, streak: currentStreak(entriesByHabit[h.id], frozenByHabit?.[h.id]) }))
+      .sort((a, b) => b.streak - a.streak)
+    return { overall, best, pattern, perfectDays, trend, insight, correlation, allStreaks }
+  }, [habits, entriesByHabit, frozenByHabit])
 
   if (habits.length === 0) {
     return (
       <div className="view-panel">
-        <div className="empty">
-          <span className="glyph">nothing to show yet</span>
-          <span className="sub">add a habit and check in a few times</span>
-        </div>
+        <EmptyState headline="nothing to show yet" sub="add a habit and check in a few times" />
       </div>
     )
   }
@@ -46,12 +59,17 @@ export default function Dashboard({ habits, entriesByHabit }) {
     <div className="view-panel">
       <div className="stat-cards">
         <div className="stat-card cat-thread">
+          <div className="stat-icon-badge badge-thread">
+            <IconLayers size={16} />
+          </div>
           <div className="stat-value">{habits.length}</div>
           <div className="stat-label">habit{habits.length === 1 ? '' : 's'} tracked</div>
         </div>
         <div className="stat-card cat-ember">
+          <div className="stat-icon-badge badge-ember">
+            <Flame size={16} />
+          </div>
           <div className={'stat-value' + (stats.best ? ' ember-value' : '')}>
-            {stats.best && <Flame size={22} />}
             {stats.best ? stats.best.streak : '—'}
           </div>
           <div className="stat-label">
@@ -59,6 +77,9 @@ export default function Dashboard({ habits, entriesByHabit }) {
           </div>
         </div>
         <div className="stat-card cat-blue">
+          <div className="stat-icon-badge badge-blue">
+            <IconTrendUp size={16} />
+          </div>
           <div className="stat-value">
             {stats.overall !== null ? `${stats.overall}%` : '—'}
             {stats.trend !== null && stats.trend !== 0 && (
@@ -70,10 +91,30 @@ export default function Dashboard({ habits, entriesByHabit }) {
           <div className="stat-label">completion, last 30 days</div>
         </div>
         <div className="stat-card cat-plum">
+          <div className="stat-icon-badge badge-plum">
+            <IconStar size={15} />
+          </div>
           <div className="stat-value">{stats.perfectDays}</div>
           <div className="stat-label">perfect day{stats.perfectDays === 1 ? '' : 's'}, past year</div>
         </div>
       </div>
+
+      {stats.allStreaks.some((s) => s.streak > 0) && (
+        <div className="all-streaks-block">
+          <h3 className="block-title">All streaks</h3>
+          <div className="all-streaks-list">
+            {stats.allStreaks.map(({ habit, streak }) => (
+              <div className="streak-chip" key={habit.id}>
+                {streak > 0 && <Flame size={13} />}
+                <span className="streak-chip-name">{habit.name}</span>
+                <span className={streak > 0 ? 'streak-chip-value ember-text' : 'streak-chip-value'}>
+                  {streak > 0 ? `${streak}d` : '—'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <ContributionGraph habits={habits} entriesByHabit={entriesByHabit} />
 
@@ -103,7 +144,7 @@ export default function Dashboard({ habits, entriesByHabit }) {
               />
               <Bar dataKey="pct" radius={[3, 3, 0, 0]} maxBarSize={28}>
                 {rhythmData.map((entry, i) => (
-                  <Cell key={i} fill="var(--thread)" />
+                  <Cell key={i} fill={RHYTHM_COLORS[i % RHYTHM_COLORS.length]} />
                 ))}
               </Bar>
             </BarChart>
@@ -113,6 +154,14 @@ export default function Dashboard({ habits, entriesByHabit }) {
           <p className="insight-line">
             <span className="insight-dot" />
             {stats.insight}
+          </p>
+        )}
+        {stats.correlation && (
+          <p className="insight-line">
+            <span className="insight-dot correlation" />
+            On days you do <strong>{stats.correlation.a.name}</strong>, you're{' '}
+            {Math.round(stats.correlation.coRate * 100)}% likely to also do{' '}
+            <strong>{stats.correlation.b.name}</strong>.
           </p>
         )}
       </div>
@@ -128,8 +177,9 @@ export default function Dashboard({ habits, entriesByHabit }) {
           </div>
           {habits.map((h) => {
             const entrySet = entriesByHabit[h.id]
-            const cur = currentStreak(entrySet)
-            const longest = longestStreak(entrySet)
+            const frozenSet = frozenByHabit?.[h.id]
+            const cur = currentStreak(entrySet, frozenSet)
+            const longest = longestStreak(entrySet, frozenSet)
             const rate = completionRate(entrySet, h.created_at, 30)
             return (
               <div className="habit-stats-row" key={h.id}>
