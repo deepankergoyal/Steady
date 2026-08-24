@@ -105,6 +105,7 @@ export default function Dashboard({ habits, entriesByHabit, frozenByHabit }) {
           <div className="all-streaks-list">
             {stats.allStreaks.map(({ habit, streak }) => (
               <div className="streak-chip" key={habit.id}>
+                <span className="chip-color-dot" style={{ background: habit.color || '#748165' }} />
                 {streak > 0 && <Flame size={13} />}
                 <span className="streak-chip-name">{habit.name}</span>
                 <span className={streak > 0 ? 'streak-chip-value ember-text' : 'streak-chip-value'}>
@@ -183,7 +184,10 @@ export default function Dashboard({ habits, entriesByHabit, frozenByHabit }) {
             const rate = completionRate(entrySet, h.created_at, 30)
             return (
               <div className="habit-stats-row" key={h.id}>
-                <div className="habit-stats-name">{h.name}</div>
+                <div className="habit-stats-name">
+                  <span className="chip-color-dot" style={{ background: h.color || '#748165' }} />
+                  {h.name}
+                </div>
                 <div className={cur > 0 ? 'ember-text' : ''}>{cur > 0 ? `${cur}d` : '—'}</div>
                 <div>{longest > 0 ? `${longest}d` : '—'}</div>
                 <div>{rate !== null ? `${rate}%` : '—'}</div>

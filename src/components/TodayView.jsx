@@ -60,10 +60,19 @@ export default function TodayView({
           const existingNote = notesByEntry?.[noteKey]
           const noteOpen = openNoteId === habit.id
 
+          const color = habit.color || '#748165'
+
           return (
-            <div key={habit.id} className={'today-row-wrap' + (done ? ' done' : '')}>
+            <div
+              key={habit.id}
+              className={'today-row-wrap' + (done ? ' done' : '')}
+              style={{ boxShadow: `inset 3px 0 0 ${color}` }}
+            >
               <div className="today-row" onClick={() => onToggle(habit.id, key)}>
-                <div className="today-check">
+                <div
+                  className="today-check"
+                  style={done ? { background: color, borderColor: color, boxShadow: `0 2px 6px ${color}59` } : undefined}
+                >
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                     <path
                       d="M2 7L5.5 10.5L12 3"

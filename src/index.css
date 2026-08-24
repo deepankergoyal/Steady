@@ -436,6 +436,13 @@ header p.sub{
   color: var(--stone);
 }
 
+.chip-color-dot{
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
 .rhythm-chart-wrap{
   width: 100%;
 }
@@ -534,6 +541,9 @@ header p.sub{
   font-family: 'Newsreader', serif;
   font-size: 16px;
   color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 @media (max-width: 480px){
@@ -866,7 +876,7 @@ header p.sub{
   display:flex;
   align-items:center;
   gap: 16px;
-  padding: 16px 4px;
+  padding: 16px 4px 16px 14px;
   cursor: pointer;
 }
 
@@ -987,6 +997,38 @@ header p.sub{
   margin-bottom: 14px;
   gap: 12px;
 }
+
+.habit-name-row{ display: flex; align-items: center; gap: 10px; min-width: 0; }
+
+.color-dot-btn{
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px var(--paper-raised), 0 0 0 3px var(--stone-line);
+  transition: transform 0.1s ease;
+}
+.color-dot-btn:hover{ transform: scale(1.2); }
+
+.color-picker-row{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 0 16px;
+}
+
+.color-swatch{
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+.color-swatch:hover{ transform: scale(1.15); }
+.color-swatch.selected{ box-shadow: 0 0 0 2px var(--paper), 0 0 0 3.5px var(--ink); }
 
 .habit-name{
   font-family: 'Newsreader', serif;

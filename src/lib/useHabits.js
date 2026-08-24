@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
+import { colorForIndex } from './habitColors'
 
 export function useHabits(session) {
   const [habits, setHabits] = useState([])
@@ -84,7 +85,12 @@ export function useHabits(session) {
 
       const { data, error } = await supabase
         .from('habits')
-        .insert({ user_id: userId, name: trimmed, sort_order: sortOrder })
+        .insert({
+          user_id: userId,
+          name: trimmed,
+          sort_order: sortOrder,
+          color: colorForIndex(sortOrder),
+        })
         .select()
         .single()
 
@@ -109,6 +115,15 @@ export function useHabits(session) {
       return
     }
     setHabits((prev) => prev.map((h) => (h.id === id ? { ...h, name: trimmed } : h)))
+  }, [])
+
+  const setHabitColor = useCallback(async (id, color) => {
+    const { error } = await supabase.from('habits').update({ color }).eq('id', id)
+    if (error) {
+      console.error(error)
+      return
+    }
+    setHabits((prev) => prev.map((h) => (h.id === id ? { ...h, color } : h)))
   }, [])
 
   const archiveHabit = useCallback(async (id) => {
@@ -295,6 +310,7 @@ export function useHabits(session) {
     setEntryNote,
     toggleFreeze,
     renameHabit,
+    setHabitColor,
     archiveHabit,
     restoreHabit,
     reorderHabit,

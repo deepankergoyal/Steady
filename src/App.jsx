@@ -42,6 +42,7 @@ export default function App() {
     setEntryNote,
     toggleFreeze,
     renameHabit,
+    setHabitColor,
     archiveHabit,
     restoreHabit,
     reorderHabit,
@@ -255,6 +256,7 @@ export default function App() {
                   frozenByHabit={frozenByHabit}
                   onSetNote={setEntryNote}
                   onToggleFreeze={toggleFreeze}
+                  onSetColor={setHabitColor}
                   viewDate={viewDate}
                   setViewDate={setViewDate}
                   onToggle={toggleDay}

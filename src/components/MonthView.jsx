@@ -11,6 +11,7 @@ export default function MonthView({
   frozenByHabit,
   onSetNote,
   onToggleFreeze,
+  onSetColor,
   viewDate,
   setViewDate,
   onToggle,
@@ -59,6 +60,7 @@ export default function MonthView({
               onSetNote={onSetNote}
               frozenSet={frozenByHabit?.[habit.id]}
               onToggleFreeze={onToggleFreeze}
+              onSetColor={onSetColor}
               viewDate={viewDate}
               onToggle={onToggle}
               onArchive={onArchive}

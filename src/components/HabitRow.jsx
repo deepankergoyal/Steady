@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import { currentStreak, dateKey, daysInMonth, isSameDay } from '../lib/dateHelpers'
+import { HABIT_COLORS } from '../lib/habitColors'
 import Flame from './Flame'
 
 // Duolingo-style limit: at most one freeze per rolling 7-day window per habit,
@@ -23,6 +24,7 @@ export default function HabitRow({
   onSetNote,
   frozenSet,
   onToggleFreeze,
+  onSetColor,
   viewDate,
   onToggle,
   onArchive,
@@ -36,6 +38,9 @@ export default function HabitRow({
   const [draftName, setDraftName] = useState(habit.name)
   const [openNoteKey, setOpenNoteKey] = useState(null)
   const [draftNote, setDraftNote] = useState('')
+  const [colorPickerOpen, setColorPickerOpen] = useState(false)
+
+  const color = habit.color || '#748165'
 
   const today = new Date()
   const numDays = daysInMonth(viewDate)
@@ -74,6 +79,7 @@ export default function HabitRow({
           const endCell = cells[runEnd]
           const line = document.createElement('div')
           line.className = 'thread-line'
+          line.style.background = color
           const left = startCell.offsetLeft + startCell.offsetWidth / 2
           const right = endCell.offsetLeft + endCell.offsetWidth / 2
           line.style.left = left + 'px'
@@ -83,7 +89,7 @@ export default function HabitRow({
         runStart = done ? i : null
       }
     })
-  }, [entrySet, viewDate])
+  }, [entrySet, viewDate, color])
 
   function startEdit() {
     setDraftName(habit.name)
@@ -100,24 +106,32 @@ export default function HabitRow({
   return (
     <div className="habit">
       <div className="habit-top">
-        {editing ? (
-          <input
-            className="habit-name-input"
-            value={draftName}
-            autoFocus
-            maxLength={60}
-            onChange={(e) => setDraftName(e.target.value)}
-            onBlur={commitEdit}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') commitEdit()
-              if (e.key === 'Escape') setEditing(false)
-            }}
+        <div className="habit-name-row">
+          <button
+            className="color-dot-btn"
+            style={{ background: color }}
+            title="Change color"
+            onClick={() => setColorPickerOpen((o) => !o)}
           />
-        ) : (
-          <div className="habit-name" onClick={startEdit} title="Click to rename">
-            {habit.name}
-          </div>
-        )}
+          {editing ? (
+            <input
+              className="habit-name-input"
+              value={draftName}
+              autoFocus
+              maxLength={60}
+              onChange={(e) => setDraftName(e.target.value)}
+              onBlur={commitEdit}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') commitEdit()
+                if (e.key === 'Escape') setEditing(false)
+              }}
+            />
+          ) : (
+            <div className="habit-name" onClick={startEdit} title="Click to rename">
+              {habit.name}
+            </div>
+          )}
+        </div>
 
         <div className="habit-meta">
           <div className="streak">
@@ -153,6 +167,23 @@ export default function HabitRow({
           </button>
         </div>
       </div>
+
+      {colorPickerOpen && (
+        <div className="color-picker-row">
+          {HABIT_COLORS.map((c) => (
+            <button
+              key={c}
+              className={'color-swatch' + (c === color ? ' selected' : '')}
+              style={{ background: c }}
+              onClick={() => {
+                onSetColor(habit.id, c)
+                setColorPickerOpen(false)
+              }}
+            />
+          ))}
+        </div>
+      )}
+
       <div className="days" ref={daysWrapRef}>
         {days.map(({ day, key, done, future, isToday, note, frozen }) => {
           const canFreeze = !done && !future && isFreezeAvailable(frozenSet, key)
@@ -166,6 +197,7 @@ export default function HabitRow({
                 (isToday ? ' today' : '') +
                 (frozen ? ' frozen' : '')
               }
+              style={done ? { background: color, borderColor: color, boxShadow: `0 1px 4px ${color}4D` } : undefined}
               title={
                 new Date(year, month, day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) +
                 (done ? ' — done' : '') +
