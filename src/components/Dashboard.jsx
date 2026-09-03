@@ -5,6 +5,7 @@ import {
   longestStreak,
   completionRate,
   weekdayPattern,
+  thisWeekPattern,
   overallCompletion,
   bestStreakHabit,
   dailyCompletionMap,
@@ -34,6 +35,7 @@ export default function Dashboard({ habits, entriesByHabit, frozenByHabit }) {
     const overall = overallCompletion(habits, entriesByHabit, 30)
     const best = bestStreakHabit(habits, entriesByHabit, frozenByHabit)
     const pattern = weekdayPattern(habits, entriesByHabit, 56)
+    const thisWeek = thisWeekPattern(habits, entriesByHabit)
     const dailyMap = dailyCompletionMap(habits, entriesByHabit, 371)
     const perfectDays = perfectDaysCount(dailyMap)
     const trend = weekTrend(dailyMap)
@@ -42,7 +44,7 @@ export default function Dashboard({ habits, entriesByHabit, frozenByHabit }) {
     const allStreaks = habits
       .map((h) => ({ habit: h, streak: currentStreak(entriesByHabit[h.id], frozenByHabit?.[h.id]) }))
       .sort((a, b) => b.streak - a.streak)
-    return { overall, best, pattern, perfectDays, trend, insight, correlation, allStreaks }
+    return { overall, best, pattern, thisWeek, perfectDays, trend, insight, correlation, allStreaks }
   }, [habits, entriesByHabit, frozenByHabit])
 
   if (habits.length === 0) {
@@ -53,7 +55,12 @@ export default function Dashboard({ habits, entriesByHabit, frozenByHabit }) {
     )
   }
 
-  const rhythmData = stats.pattern.map((pct, i) => ({ label: WEEKDAY_LABELS[i], pct }))
+  const rhythmData = stats.thisWeek.map((d, i) => ({
+    label: WEEKDAY_LABELS[i],
+    pct: d.future ? null : d.pct,
+    future: d.future,
+    isToday: !d.future && d.date.toDateString() === new Date().toDateString(),
+  }))
 
   return (
     <div className="view-panel">
@@ -121,7 +128,7 @@ export default function Dashboard({ habits, entriesByHabit, frozenByHabit }) {
 
       <div className="rhythm-block">
         <h3 className="block-title">Weekly rhythm</h3>
-        <p className="block-sub">how consistent you are by day of week, last 8 weeks</p>
+        <p className="block-sub">your completion each day this week</p>
         <div className="rhythm-chart-wrap">
           <ResponsiveContainer width="100%" height={100}>
             <BarChart data={rhythmData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
@@ -134,7 +141,9 @@ export default function Dashboard({ habits, entriesByHabit, frozenByHabit }) {
               <YAxis hide domain={[0, 100]} />
               <Tooltip
                 cursor={{ fill: 'var(--warm-hover)' }}
-                formatter={(value) => [`${value}%`, 'Completion']}
+                formatter={(value, name, props) =>
+                  props.payload.future ? ['—', 'Not yet'] : [`${value}%`, 'Completion']
+                }
                 contentStyle={{
                   fontFamily: 'IBM Plex Sans',
                   fontSize: 12,
@@ -145,7 +154,12 @@ export default function Dashboard({ habits, entriesByHabit, frozenByHabit }) {
               />
               <Bar dataKey="pct" radius={[3, 3, 0, 0]} maxBarSize={28}>
                 {rhythmData.map((entry, i) => (
-                  <Cell key={i} fill={RHYTHM_COLORS[i % RHYTHM_COLORS.length]} />
+                  <Cell
+                    key={i}
+                    fill={entry.future ? 'var(--stone-line)' : RHYTHM_COLORS[i % RHYTHM_COLORS.length]}
+                    stroke={entry.isToday ? 'var(--ember)' : 'none'}
+                    strokeWidth={entry.isToday ? 2 : 0}
+                  />
                 ))}
               </Bar>
             </BarChart>

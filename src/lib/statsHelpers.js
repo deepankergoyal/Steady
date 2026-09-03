@@ -1,5 +1,43 @@
 import { currentStreak, dateKey } from './dateHelpers'
 
+// Actual completion for the current calendar week (Monday through Sunday),
+// not an average — days after today are marked "future" and not yet scored.
+export function thisWeekPattern(habits, entriesByHabit) {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const jsDay = today.getDay() // 0 = Sun .. 6 = Sat
+  const mondayOffset = jsDay === 0 ? 6 : jsDay - 1
+  const monday = new Date(today)
+  monday.setDate(monday.getDate() - mondayOffset)
+
+  const result = []
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday)
+    d.setDate(d.getDate() + i)
+    const future = d > today
+
+    let done = 0
+    let eligible = 0
+    if (!future) {
+      habits.forEach((h) => {
+        const created = h.created_at ? new Date(h.created_at) : null
+        if (created) created.setHours(0, 0, 0, 0)
+        if (created && d < created) return
+        eligible++
+        if (entriesByHabit[h.id]?.has(dateKey(d))) done++
+      })
+    }
+
+    result.push({
+      date: d,
+      pct: eligible > 0 ? Math.round((done / eligible) * 100) : 0,
+      future,
+    })
+  }
+  return result
+}
+
 export function longestStreak(entrySet, frozenSet) {
   if (!entrySet || entrySet.size === 0) return 0
   const dates = Array.from(entrySet).sort()
